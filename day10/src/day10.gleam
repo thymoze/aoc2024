@@ -38,58 +38,40 @@ fn add_path(map: Map, between one: Trail, and other: Trail) -> Map {
 }
 
 fn parse(input: List(List(Int))) -> Map {
-  let ysize = list.length(input)
-  let xsize = list.first(input) |> result.map(list.length) |> result.unwrap(0)
-
   use acc, line, y <- list.index_fold(input, dict.new())
   use acc, height, x <- list.index_fold(line, acc)
 
   let self = Trail(Position(x, y), height)
 
-  let add_left = fn(map: Map) {
-    use <- bool.guard(x < 1, map)
-    {
-      use h <- result.try(list.drop(line, x - 1) |> list.first)
-      use <- bool.guard(h - height != 1, Error(Nil))
-      let left = Trail(Position(x - 1, y), h)
-      Ok(add_path(map, between: self, and: left))
+  let add_x = fn(map: Map) {
+    case list.drop(line, x + 1) {
+      [h, ..] -> {
+        let other = Trail(Position(x + 1, y), h)
+        case h - height {
+          1 -> add_path(map, between: self, and: other)
+          -1 -> add_path(map, between: other, and: self)
+          _ -> map
+        }
+      }
+      _ -> map
     }
-    |> result.unwrap(map)
   }
-  let add_right = fn(map: Map) {
-    use <- bool.guard(x >= xsize - 1, map)
-    {
-      use h <- result.try(list.drop(line, x + 1) |> list.first)
-      use <- bool.guard(h - height != 1, Error(Nil))
-      let right = Trail(Position(x + 1, y), h)
-      Ok(add_path(map, between: self, and: right))
+  let add_y = fn(map: Map) {
+    case list.drop(input, y + 1) {
+      [line, ..] -> {
+        let assert Ok(h) = list.drop(line, x) |> list.first
+        let other = Trail(Position(x, y + 1), h)
+        case h - height {
+          1 -> add_path(map, between: self, and: other)
+          -1 -> add_path(map, between: other, and: self)
+          _ -> map
+        }
+      }
+      _ -> map
     }
-    |> result.unwrap(map)
-  }
-  let add_up = fn(map: Map) {
-    use <- bool.guard(y < 1, map)
-    {
-      use line <- result.try(list.drop(input, y - 1) |> list.first)
-      use h <- result.try(list.drop(line, x) |> list.first)
-      use <- bool.guard(h - height != 1, Error(Nil))
-      let up = Trail(Position(x, y - 1), h)
-      Ok(add_path(map, between: self, and: up))
-    }
-    |> result.unwrap(map)
-  }
-  let add_down = fn(map: Map) {
-    use <- bool.guard(y >= ysize - 1, map)
-    {
-      use line <- result.try(list.drop(input, y + 1) |> list.first)
-      use h <- result.try(list.drop(line, x) |> list.first)
-      use <- bool.guard(h - height != 1, Error(Nil))
-      let down = Trail(Position(x, y + 1), h)
-      Ok(add_path(map, between: self, and: down))
-    }
-    |> result.unwrap(map)
   }
 
-  acc |> add_left |> add_right |> add_up |> add_down
+  acc |> add_x |> add_y
 }
 
 fn hike_loop(
